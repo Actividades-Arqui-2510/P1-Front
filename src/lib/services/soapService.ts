@@ -17,6 +17,7 @@ async function callSoapService(endpoint: string, action: string, body: string): 
   `;
 
   try {
+    console.log(`Llamando a ${config.apiUrl}/${endpoint}`);
     const response = await fetch(`${config.apiUrl}/${endpoint}`, {
       method: "POST",
       headers: {

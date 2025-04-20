@@ -4,10 +4,10 @@
   
   <div class="container">
     <h1>Bienvenido</h1>
-    <a href="/patient/LoginPatient" on:click|preventDefault={() => goto('/patient/loginPatient')}>
+    <a href="/patient/loginPatient" on:click|preventDefault={() => goto('/patient/loginPatient')}>
         <button>👨‍⚕️ Soy Paciente</button>
     </a>
-    <a href="/doctor/LoginDoctor" on:click|preventDefault={() => goto('/doctor/LoginDoctor')}>
+    <a href="/doctor/loginDoctor" on:click|preventDefault={() => goto('/doctor/LoginDoctor')}>
         <button>🩺 Soy Doctor</button>
     </a>
 </div>

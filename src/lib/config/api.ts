@@ -19,7 +19,7 @@ export function isRunningInDocker(): boolean {
     
     // De lo contrario, usar URLs predeterminadas según el entorno
     return isRunningInDocker() 
-      ? 'http://backend:8080'       // URL predeterminada para Docker
+      ? 'http://localhost:8080/soap'       // URL predeterminada para Docker
       : 'https://ubiquitous-barnacle-4jjjr69754wp25qxv-8080.app.github.dev/soap'; // URL predeterminada para desarrollo local
   }
   
