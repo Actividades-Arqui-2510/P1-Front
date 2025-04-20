@@ -12,14 +12,15 @@
       const paciente: Patient | null = await patientService.loginPatient(email, password);
       if (paciente) {
         localStorage.setItem('usuario', JSON.stringify(paciente));
-        location.hash = '/homePaciente';
+        console.log('Usuario logueado:', paciente);
+        await goto('/patient/homePatient');
       } else {
         error = 'Correo o contraseña incorrectos';
       }
     }
   
     async function goToRegister() {
-      await goto('/registrarPaciente');
+      await goto('/patient/registrarPaciente');
     }
   </script>
   

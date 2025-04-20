@@ -3,9 +3,12 @@
     import { doctorService } from '$lib/services/doctorService';
     import { patientService } from '$lib/services/patientService';
     import type { Doctor } from '$lib/types/doctor';
+    import type { Patient } from '$lib/types/patient';
     
     const usuarioStr = localStorage.getItem("usuario");
-    const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
+    const usuario: Patient = usuarioStr ? JSON.parse(usuarioStr) : null;
+
+    console.log("Usuario desde localStorage:", usuario);
   
     let doctores: Doctor[] = [];
     let error = "";
@@ -31,7 +34,7 @@
       if (!confirmacion || !usuario) return;
   
       try {
-        const success = await patientService.deletePatient(usuario.id);
+        const success = await patientService.deletePatient(usuario.patientId);
         
         if (success) {
           alert("🗑 Cuenta eliminada correctamente.");
@@ -85,7 +88,7 @@
   
   <div class="container">
     {#if usuario}
-      <h2>👋 Hola paciente, {usuario.name}</h2>
+      <h2>👋 Hola paciente, {usuario.firstName} {usuario.lastName}</h2>
   
       <button on:click={getAllDoctors}>👨‍⚕️ Ver Doctores</button>
   
