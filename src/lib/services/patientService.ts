@@ -50,10 +50,34 @@ export const patientService = {
     const response = await userSoapService.callService("updatePatient", soapBody);
     return response.success;
   },
+
+  registerPatient: async (patientData: Omit<Patient, 'patientId'>, password: string): Promise<boolean> => {
+    // Construir el XML según el formato requerido por el endpoint
+    const soapBody = `
+      <soap:savePatient>
+        <patient>
+          <firstName>${patientData.firstName}</firstName>
+          <lastName>${patientData.lastName}</lastName>
+          <dateOfBirth>${patientData.dateOfBirth}</dateOfBirth>
+          <email>${patientData.email}</email>
+          <phone>${patientData.phone}</phone>
+        </patient>
+        <password>${password}</password>
+      </soap:savePatient>
+    `;
+    
+    try {
+      const response = await userSoapService.callService("savePatient", soapBody);
+      return response.success;
+    } catch (error) {
+      console.error("Error al registrar paciente:", error);
+      throw error;
+    }
+  },
   
   getPatientById: async (patientId: string): Promise<Patient | null> => {
-    const soapBody = `<soap:getPatient><patientId>${patientId}</patientId></soap:getPatient>`;
-    const response = await userSoapService.callService("getPatient", soapBody);
+    const soapBody = `<soap:getPatientById><patientId>${patientId}</patientId></soap:getPatientById>`;
+    const response = await userSoapService.callService("getPatientById", soapBody);
     
     if (!response.success) {
       throw new Error('Error al obtener datos del paciente');
@@ -70,5 +94,29 @@ export const patientService = {
       phone: patientNode.getElementsByTagName("phone")[0]?.textContent || '',
       dateOfBirth: patientNode.getElementsByTagName("dateOfBirth")[0]?.textContent || ''
     };
+  },
+
+  getAllPatients: async (): Promise<Patient[]> => {
+    const soapBody = `<soap:getAllPatients/>`;
+    
+    const { xmlDoc, success } = await userSoapService.callService("getAllPatients", soapBody);
+    if (!success) return [];
+    
+    const patientNodes = Array.from(xmlDoc.querySelectorAll('patients'));
+    
+    return patientNodes.map(patient => {
+      // parseamos dateOfBirth y forzamos formato YYYY-MM-DD
+      const rawDob = patient.querySelector('dateOfBirth')?.textContent || '';
+      const dob = new Date(rawDob).toISOString().slice(0, 10);
+      
+      return {
+        patientId: patient.querySelector('patientId')?.textContent || '',
+        firstName: patient.querySelector('firstName')?.textContent || '',
+        lastName: patient.querySelector('lastName')?.textContent || '',
+        email: patient.querySelector('email')?.textContent || '',
+        phone: patient.querySelector('phone')?.textContent || '',
+        dateOfBirth: dob
+      };
+    });
   }
 };

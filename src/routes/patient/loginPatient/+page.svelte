@@ -1,37 +1,30 @@
 <script lang="ts">
-    import { goto } from '$app/navigation';
-    import { patientService } from '$lib/services/patientService';
-    import type { Patient } from '$lib/types/patient';
-  
-    let email = '';
-    let password = '';
-    let error = '';
-  
-    async function handleLogin() {
-      error = '';
-      const paciente: Patient | null = await patientService.loginPatient(email, password);
-      if (paciente) {
-        localStorage.setItem('usuario', JSON.stringify(paciente));
-        console.log('Usuario logueado:', paciente);
-        await goto('/patient/homePatient');
-      } else {
-        error = 'Correo o contraseña incorrectos';
-      }
+  import { goto } from '$app/navigation';
+  import { patientService } from '$lib/services/patientService';
+  import type { Patient } from '$lib/types/patient';
+  import LoginForm from '$lib/components/LoginForm.svelte';
+
+  async function handlePatientLogin(email: string, password: string): Promise<void> {
+    const paciente: Patient | null = await patientService.loginPatient(email, password);
+    if (paciente) {
+      localStorage.setItem('usuario', JSON.stringify(paciente));
+      console.log('Usuario logueado:', paciente);
+      await goto('/patient/homePatient');
+    } else {
+      throw new Error('Correo o contraseña incorrectos');
     }
-  
-    async function goToRegister() {
-      await goto('/patient/registrarPaciente');
-    }
-  </script>
-  
-  <input placeholder="Email" bind:value={email} />
-  <input type="password" placeholder="Password" bind:value={password} />
-  
-  <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-    <button on:click={handleLogin}>Iniciar sesión</button>
-    <button on:click={goToRegister}>Registrarse</button>
-  </div>
-  
-  {#if error}
-    <p style="color: red;">{error}</p>
-  {/if}
+  }
+</script>
+
+<svelte:head>
+  <title>Iniciar sesión | Paciente</title>
+</svelte:head>
+
+<LoginForm
+  roleTitle="Paciente"
+  roleIcon="👨‍⚕️"
+  roleDescription="Accede como paciente para gestionar tus citas médicas"
+  gradientColors="135deg, #3b82f6, #2563eb"
+  registerPath="/patient/registerPatient"
+  handleLoginSubmit={handlePatientLogin}
+/>

@@ -6,3 +6,12 @@ export interface Doctor {
   email: string | null;
   phone: string | null;
 }
+
+export interface DoctorUpdateData {
+  doctorId: string;
+  firstName?: string;
+  lastName?: string;
+  specialty?: string;
+  email?: string;
+  phone?: string;
+}
