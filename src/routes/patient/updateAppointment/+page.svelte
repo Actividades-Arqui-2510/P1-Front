@@ -3,12 +3,12 @@
     import { browser } from '$app/environment';
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
-    import { getAppointmentDetails, updateAppointment } from '$lib/services/appointmentService';
     import type { Appointment } from '$lib/types/appointment';
   
     import Button from '$lib/components/Button.svelte';
     import DashboardLayout from '$lib/components/DashboardLayout.svelte';
     import NavItem from '$lib/components/NavItem.svelte';
+    import { appointmentService } from '$lib/services/appointmentService';
   
     let usuario: any = null;
     let appointmentId = '';
@@ -53,7 +53,7 @@
   
       try {
         loading = true;
-        const cita = await getAppointmentDetails(appointmentId);
+        const cita = await appointmentService.getAppointmentById(appointmentId);
         if (cita && cita.patient.patientId === usuario.patientId) {
           appointment = cita;
         } else {
@@ -67,15 +67,26 @@
       }
     }
   
+    function validateTimes(appt: Appointment): boolean {
+      return appt.startTime < appt.endTime;
+    }
+    
     async function guardarCambios() {
       if (!appointment) return;
       formTouched = true;
-      loading = true;
       errorMessage = '';
       successMessage = '';
+      
+      // Validar que la hora final sea posterior a la inicial
+      if (!validateTimes(appointment)) {
+        errorMessage = '⚠️ La hora de finalización debe ser posterior a la hora de inicio.';
+        return;
+      }
+      
+      loading = true;
   
       try {
-        await updateAppointment(appointment);
+        await appointmentService.updateAppointment(appointment);
         successMessage = '✅ Cita actualizada correctamente';
   
         setTimeout(() => {

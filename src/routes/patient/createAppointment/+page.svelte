@@ -2,15 +2,15 @@
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
     import { doctorService } from '$lib/services/doctorService';
-    import { createAppointment } from '$lib/services/appointmentService';
     import type { Doctor } from '$lib/types/doctor';
     import type { Patient } from '$lib/types/patient';
+    import { appointmentService } from '$lib/services/appointmentService';
   
     let doctorId = '';
     let appointmentDate = '';
     let startTime = '';
     let endTime = '';
-    let status = '';
+    const status = 'SCHEDULED';
     let notes = '';
   
     let availableDoctors: Doctor[] = [];
@@ -39,6 +39,11 @@
         console.error(e);
       }
     });
+
+    function validateTimes() {
+      if (!startTime || !endTime) return true;
+      return startTime < endTime;
+    }
   
     async function handleSubmit() {
       errorMessage = '';
@@ -48,13 +53,18 @@
         errorMessage = '⚠️ Todos los campos marcados con * son obligatorios.';
         return;
       }
+
+      if (!validateTimes()) {
+        errorMessage = '⚠️ La hora de finalización debe ser posterior a la hora de inicio.';
+        return;
+      }
   
       loading = true;
   
       const selectedDoctor = availableDoctors.find(d => String(d.doctorId) === doctorId);
   
       try {
-        await createAppointment({
+        await appointmentService.createAppointment({
           appointmentDate,
           startTime,
           endTime,
@@ -65,7 +75,7 @@
         });
   
         successMessage = '✅ Cita creada exitosamente. Redirigiendo...';
-        setTimeout(() => goto('/patient'), 2000);
+        setTimeout(() => goto('/patient/homePatient'), 2000);
       } catch (err) {
         console.error(err);
         errorMessage = '❌ No se pudo crear la cita';
@@ -112,8 +122,11 @@
       </div>
   
       <div class="form-group">
-        <label for="status">Estado *</label>
-        <input type="text" id="status" bind:value={status} placeholder="Ej: PENDIENTE" />
+        <label>Estado de la cita</label>
+        <div class="status-indicator scheduled">
+          PROGRAMADA <span class="icon">✓</span>
+        </div>
+        <small>Las citas nuevas siempre se crean con estado "Programada"</small>
       </div>
   
       <div class="form-group">
@@ -218,4 +231,28 @@
       background-color: #9ca3af;
       cursor: not-allowed;
     }
+
+    .status-indicator {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    display: inline-block;
+    margin-bottom: 0.5rem;
+  }
+  
+  .status-indicator.scheduled {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+  }
+  
+  .status-indicator .icon {
+    margin-left: 0.5rem;
+  }
+  
+  small {
+    color: #6b7280;
+    display: block;
+    font-size: 0.8rem;
+  }
   </style>  

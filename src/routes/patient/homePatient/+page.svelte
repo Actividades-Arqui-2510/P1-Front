@@ -3,10 +3,7 @@
   import { goto } from "$app/navigation";
   import { doctorService } from "$lib/services/doctorService";
   import { patientService } from "$lib/services/patientService";
-  import {
-    getAllAppointments,
-    deleteAppointment,
-  } from "$lib/services/appointmentService";
+  import { appointmentService } from '$lib/services/appointmentService';
 
   import type { Doctor } from "$lib/types/doctor";
   import type { Patient } from "$lib/types/patient";
@@ -43,7 +40,7 @@
 
       try {
         loadingAppointments = true;
-        await deleteAppointment(id);
+        await appointmentService.deleteAppointment(id);
         appointments = appointments.filter((a) => a.appointmentId !== id);
         successMessage = `✅ Cita #${id} eliminada correctamente`;
 
@@ -95,7 +92,11 @@
 
     try {
       loadingAppointments = true;
-      appointments = await getAllAppointments();
+      console.log(usuario?.patientId);
+      appointments = await appointmentService.getAppointmentsByPatientId(
+        usuario?.patientId ?? "",
+      );
+      console.log(appointments);
       mostrarAppointments = true;
       error = "";
     } catch (err) {
@@ -170,7 +171,7 @@
       <NavItem
         icon="📅"
         text="Mis Citas"
-        on:click={() => goto("/patient/appointments")}
+        on:click={() => goto("/patient/appointmentDetails")}
       />
       <NavItem
         icon="📝"
@@ -211,7 +212,6 @@
         icon="📅"
         title="Ver Citas"
         description="Consulta tus citas médicas programadas"
-        variant="success"
       >
         <Button
           variant={mostrarAppointments ? "secondary" : "primary"}
@@ -234,6 +234,21 @@
           on:click={() => goto("/doctorById")}
         >
           Buscar
+        </Button>
+      </ActionCard>
+
+      <ActionCard
+        icon="➕"
+        title="Nueva Cita"
+        description="Agenda una nueva cita médica"
+        variant="primary"
+      >
+        <Button
+          variant="primary"
+          size="sm"
+          on:click={() => goto("/patient/createAppointment")}
+        >
+          Agendar Cita
         </Button>
       </ActionCard>
 
@@ -292,9 +307,6 @@
         <h3>Mis Citas Médicas</h3>
         <DataTable
           data={appointments
-            .filter(
-              (a) => String(a.patient.patientId) === String(usuario?.patientId),
-            )
             .map((a) => ({
               appointmentId: a.appointmentId,
               appointmentDate: a.appointmentDate,
@@ -314,11 +326,20 @@
             {
               key: "actions",
               title: "Acciones",
-              render: (id) => `
-            <a class="action-link" href="/patient/updateAppointment?appointmentId=${id}">✏️ Editar</a>
-            &nbsp;|&nbsp;
-            <a class="action-link delete" href="#" onclick="event.preventDefault(); dispatchEvent(new CustomEvent('delete-appointment', { detail: ${id} }));">🗑️ Eliminar</a>
-          `,
+              render: (appointmentId) => `
+                <div style="display: flex; gap: 8px;">
+                  <a href="/patient/updateAppointment?appointmentId=${appointmentId}" 
+                     style="display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500; text-decoration: none; background-color: #ebf5ff; color: #2563eb; border: 1px solid #bfdbfe;">
+                    <span style="margin-right: 4px;">✏️</span>
+                    <span>Editar</span>
+                  </a>
+                  <a href="#" onclick="event.preventDefault(); dispatchEvent(new CustomEvent('delete-appointment', { detail: ${appointmentId} }));" 
+                     style="display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500; text-decoration: none; background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca;">
+                    <span style="margin-right: 4px;">🗑️</span>
+                    <span>Eliminar</span>
+                  </a>
+                </div>
+              `
             },
           ]}
           loading={loadingAppointments}
@@ -341,17 +362,6 @@
 {/if}
 
 <style>
-  .action-link {
-    color: #3b82f6;
-    font-weight: 500;
-    text-decoration: none;
-  }
-  .action-link.delete {
-    color: #dc2626;
-  }
-  .action-link:hover {
-    text-decoration: underline;
-  }
   .success-toast {
     background-color: #d1fae5;
     color: #065f46;

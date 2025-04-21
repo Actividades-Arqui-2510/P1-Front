@@ -2,12 +2,13 @@
     import { onMount } from 'svelte';
     import { browser } from '$app/environment';
     import { goto } from '$app/navigation';
-    import { updateAppointment, getAppointmentDetails } from '$lib/services/appointmentService';
     import type { Appointment } from '$lib/types/appointment';
   
     import Button from '$lib/components/Button.svelte';
     import DashboardLayout from '$lib/components/DashboardLayout.svelte';
     import NavItem from '$lib/components/NavItem.svelte';
+    import { appointmentService } from '$lib/services/appointmentService';
+    import { page } from '$app/stores';
   
     let doctor: any = null;
     let appointmentId = '';
@@ -19,12 +20,28 @@
     let successMessage = '';
     let formTouched = false;
   
-    onMount(() => {
+    $: {
+      const idParam = $page.url.searchParams.get('appointmentId');
+      if (idParam && appointmentId !== idParam) {
+        appointmentId = idParam;
+        // Buscar la cita automáticamente cuando cambia el ID
+        if (doctor && !loading) {
+          buscarCita();
+        }
+      }
+    }
+    
+    onMount(async () => {
       if (browser) {
         const storedDoctor = localStorage.getItem('doctor');
         if (storedDoctor) {
           doctor = JSON.parse(storedDoctor);
           loadingUser = false;
+          
+          // Si ya tenemos un ID de la URL, buscar la cita
+          if (appointmentId) {
+            buscarCita();
+          }
         } else {
           goto('/');
         }
@@ -43,7 +60,7 @@
   
       try {
         loading = true;
-        const cita = await getAppointmentDetails(appointmentId);
+        const cita = await appointmentService.getAppointmentById(appointmentId);
   
         if (!cita) {
           errorMessage = `No se encontró la cita con ID ${appointmentId}`;
@@ -61,12 +78,14 @@
     }
   
     function isValidAppointment(appt: Appointment): boolean {
-      return Boolean(
-        appt.appointmentDate &&
-        appt.startTime &&
-        appt.endTime &&
-        ['SCHEDULED', 'COMPLETED', 'CANCELLED'].includes(appt.status)
-      );
+      // Primero validamos los campos requeridos
+      if (!(appt.appointmentDate && appt.startTime && appt.endTime &&
+          ['SCHEDULED', 'COMPLETED', 'CANCELLED'].includes(appt.status))) {
+        return false;
+      }
+      
+      // Luego validamos que la hora final sea posterior a la inicial
+      return appt.startTime < appt.endTime;
     }
   
     async function guardarCambios() {
@@ -77,14 +96,19 @@
       if (!appointment) return;
   
       if (!isValidAppointment(appointment)) {
-        errorMessage = '⚠️ Verifica que todos los campos estén completos y válidos.';
+        // Identificar el error específico para mostrar un mensaje más claro
+        if (appointment.startTime >= appointment.endTime) {
+          errorMessage = '⚠️ La hora de finalización debe ser posterior a la hora de inicio.';
+        } else {
+          errorMessage = '⚠️ Verifica que todos los campos estén completos y válidos.';
+        }
         return;
       }
   
       loading = true;
   
       try {
-        await updateAppointment(appointment);
+        await appointmentService.updateAppointment(appointment);
         successMessage = '✅ Cita actualizada correctamente';
   
         setTimeout(() => {

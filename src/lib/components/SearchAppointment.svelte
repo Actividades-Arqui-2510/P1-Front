@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getAppointmentDetails } from '$lib/services/appointmentService';
+    import { appointmentService } from '$lib/services/appointmentService';
     import type { Appointment } from '$lib/types/appointment';
   
     export let availableAppointments: Appointment[] = [];
@@ -23,7 +23,7 @@
       loading = true;
   
       try {
-        appointment = await getAppointmentDetails(searchId);
+        appointment = await appointmentService.getAppointmentById(searchId);
         if (!appointment) {
           error = `No se encontró ninguna cita con ID ${searchId}`;
         }

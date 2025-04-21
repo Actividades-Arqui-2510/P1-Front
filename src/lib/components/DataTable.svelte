@@ -1,6 +1,10 @@
 <script lang="ts">
     export let data: any[] = [];
-    export let columns: { key: string; title: string; }[] = [];
+    export let columns: {
+      key: string;
+      title: string;
+      render?: (value: any, row: any) => string | HTMLElement; // Add this line
+    }[] = [];
     export let loading: boolean = false;
     export let emptyMessage: string = "No hay datos disponibles";
   </script>
@@ -27,12 +31,18 @@
           </thead>
           <tbody>
             {#each data as row}
-              <tr>
-                {#each columns as column}
-                  <td>{row[column.key]}</td>
-                {/each}
-              </tr>
-            {/each}
+            <tr>
+              {#each columns as column}
+                <td>
+                  {#if column.render}
+                    {@html column.render(row[column.key], row)}
+                  {:else}
+                    {row[column.key]}
+                  {/if}
+                </td>
+              {/each}
+            </tr>
+          {/each}
           </tbody>
         </table>
       </div>

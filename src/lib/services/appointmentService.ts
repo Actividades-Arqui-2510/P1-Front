@@ -1,239 +1,306 @@
-import type { Appointment } from "$lib/types/appointment";
+import { appointmentSoapService } from './soapService';
+import type { Appointment } from '$lib/types/appointment';
 
-// 📌 Obtener todas las citas
-export async function getAllAppointments(): Promise<Appointment[]> {
-    const soapEnvelope = `
-    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                      xmlns:app="http://soap.p1backend.example.com/">
-       <soapenv:Header/>
-       <soapenv:Body>
-          <app:getAllAppointments/>
-       </soapenv:Body>
-    </soapenv:Envelope>
-  `;
+export const appointmentService = {
+  // Obtener todas las citas
+  getAllAppointments: async (): Promise<Appointment[]> => {
+    const soapBody = `<soap:getAllAppointments/>`;
+    const { xmlDoc, success } = await appointmentSoapService.callService(
+      'getAllAppointments',
+      soapBody
+    );
+    if (!success) throw new Error('Error al obtener citas');
 
-    const response = await fetch('https://ubiquitous-barnacle-4jjjr69754wp25qxv-8080.app.github.dev/soap/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/xml' },
-        body: soapEnvelope
-    });
+    const nodes = Array.from(xmlDoc.getElementsByTagName('appointment'));
+    return nodes.map((el) => {
+      const get = (tag: string, parent: Element = el) =>
+        parent.getElementsByTagName(tag)[0]?.textContent?.trim() ?? '';
 
-    const text = await response.text();
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(text, 'text/xml');
-    const appointmentNodes = Array.from(xmlDoc.getElementsByTagName('appointments'));
+      const doctorEl = el.getElementsByTagName('doctor')[0];
+      const patientEl = el.getElementsByTagName('patient')[0];
 
-    return appointmentNodes.map((el): Appointment => {
-        const getText = (tag: string, parent: Element = el) =>
-            parent?.getElementsByTagName(tag)?.[0]?.textContent?.trim() ?? '';
-
-        const doctorEl = el.getElementsByTagName('doctor')[0];
-        const patientEl = el.getElementsByTagName('patient')[0];
-
-        return {
-            appointmentId: Number(getText('appointmentId')),
-            appointmentDate: getText('appointmentDate'),
-            startTime: getText('startTime'),
-            endTime: getText('endTime'),
-            status: getText('status'),
-            notes: getText('notes'),
-            doctor: {
-                doctorId: Number(getText('doctorId', doctorEl)),
-                firstName: getText('firstName', doctorEl),
-                lastName: getText('lastName', doctorEl),
-                email: getText('email', doctorEl),
-                phone: getText('phone', doctorEl),
-                specialty: getText('specialty', doctorEl)
-            },
-            patient: {
-                patientId: Number(getText('patientId', patientEl)),
-                firstName: getText('firstName', patientEl),
-                lastName: getText('lastName', patientEl),
-                email: getText('email', patientEl),
-                phone: getText('phone', patientEl),
-                dateOfBirth: getText('dateOfBirth', patientEl)
-            }
-        };
-    });
-}
-
-// 📌 Obtener detalles por ID
-export async function getAppointmentDetails(appointmentId: number | string): Promise<Appointment | null> {
-    const soapEnvelope = `
-    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                      xmlns:app="http://soap.p1backend.example.com/">
-       <soapenv:Header/>
-       <soapenv:Body>
-          <app:getAppointmentDetails>
-            <appointmentId>${appointmentId}</appointmentId>
-          </app:getAppointmentDetails>
-       </soapenv:Body>
-    </soapenv:Envelope>
-  `;
-
-    const response = await fetch('https://ubiquitous-barnacle-4jjjr69754wp25qxv-8080.app.github.dev/soap/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/xml' },
-        body: soapEnvelope
-    });
-
-    const text = await response.text();
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(text, 'text/xml');
-    const el = xmlDoc.getElementsByTagName('appointment')[0];
-    if (!el) return null;
-
-    const getText = (tag: string, parent: Element = el) =>
-        parent?.getElementsByTagName(tag)?.[0]?.textContent?.trim() ?? '';
-
-    const doctorEl = el.getElementsByTagName('doctor')[0];
-    const patientEl = el.getElementsByTagName('patient')[0];
-
-    return {
-        appointmentId: Number(getText('appointmentId')),
-        appointmentDate: getText('appointmentDate'),
-        startTime: getText('startTime'),
-        endTime: getText('endTime'),
-        status: getText('status'),
-        notes: getText('notes'),
+      return {
+        appointmentId: Number(get('appointmentId')),
+        appointmentDate: get('appointmentDate'),
+        startTime: get('startTime'),
+        endTime: get('endTime'),
+        status: get('status'),
+        notes: get('notes'),
         doctor: {
-            doctorId: Number(getText('doctorId', doctorEl)),
-            firstName: getText('firstName', doctorEl),
-            lastName: getText('lastName', doctorEl),
-            email: getText('email', doctorEl),
-            phone: getText('phone', doctorEl),
-            specialty: getText('specialty', doctorEl)
+          doctorId: get('doctorId', doctorEl),
+          firstName: get('firstName', doctorEl),
+          lastName: get('lastName', doctorEl),
+          specialty: get('specialty', doctorEl),
+          email: get('email', doctorEl),
+          phone: get('phone', doctorEl)
         },
         patient: {
-            patientId: Number(getText('patientId', patientEl)),
-            firstName: getText('firstName', patientEl),
-            lastName: getText('lastName', patientEl),
-            email: getText('email', patientEl),
-            phone: getText('phone', patientEl),
-            dateOfBirth: getText('dateOfBirth', patientEl)
+          patientId: get('patientId', patientEl),
+          firstName: get('firstName', patientEl),
+          lastName: get('lastName', patientEl),
+          dateOfBirth: get('dateOfBirth', patientEl),
+          email: get('email', patientEl),
+          phone: get('phone', patientEl)
         }
-    };
-}
-
-// 📌 Crear nueva cita
-export async function createAppointment(appointment: Omit<Appointment, 'appointmentId'>): Promise<void> {
-    const soapEnvelope = `
-    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                      xmlns:app="http://soap.p1backend.example.com/">
-      <soapenv:Header/>
-      <soapenv:Body>
-        <app:createAppointment>
-          <appointmentDetails>
-            <appointmentDate>${appointment.appointmentDate}</appointmentDate>
-            <startTime>${appointment.startTime}</startTime>
-            <endTime>${appointment.endTime}</endTime>
-            <status>${appointment.status}</status>
-            <notes>${appointment.notes ?? ''}</notes>
-            <doctor>
-              <doctorId>${appointment.doctor.doctorId}</doctorId>
-              <firstName>${appointment.doctor.firstName}</firstName>
-              <lastName>${appointment.doctor.lastName}</lastName>
-              <email>${appointment.doctor.email}</email>
-              <phone>${appointment.doctor.phone}</phone>
-              <specialty>${appointment.doctor.specialty}</specialty>
-            </doctor>
-            <patient>
-              <patientId>${appointment.patient.patientId}</patientId>
-              <firstName>${appointment.patient.firstName}</firstName>
-              <lastName>${appointment.patient.lastName}</lastName>
-              <email>${appointment.patient.email}</email>
-              <phone>${appointment.patient.phone}</phone>
-              <dateOfBirth>${appointment.patient.dateOfBirth}</dateOfBirth>
-            </patient>
-          </appointmentDetails>
-        </app:createAppointment>
-      </soapenv:Body>
-    </soapenv:Envelope>
-  `;
-
-    const response = await fetch('https://ubiquitous-barnacle-4jjjr69754wp25qxv-8080.app.github.dev/soap/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/xml' },
-        body: soapEnvelope
+      };
     });
+  },
 
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Error al crear cita: ${err}`);
-    }
-}
-
-// 📌 Actualizar cita existente
-export async function updateAppointment(appointment: Appointment): Promise<void> {
-    const soapEnvelope = `
-    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                      xmlns:app="http://soap.p1backend.example.com/">
-      <soapenv:Header/>
-      <soapenv:Body>
-        <app:updateAppointment>
-          <appointmentDetails>
-            <appointmentId>${appointment.appointmentId}</appointmentId>
-            <appointmentDate>${appointment.appointmentDate}</appointmentDate>
-            <startTime>${appointment.startTime}</startTime>
-            <endTime>${appointment.endTime}</endTime>
-            <status>${appointment.status}</status>
-            <notes>${appointment.notes ?? ''}</notes>
-            <doctor>
-              <doctorId>${appointment.doctor.doctorId}</doctorId>
-              <firstName>${appointment.doctor.firstName}</firstName>
-              <lastName>${appointment.doctor.lastName}</lastName>
-              <email>${appointment.doctor.email}</email>
-              <phone>${appointment.doctor.phone}</phone>
-              <specialty>${appointment.doctor.specialty}</specialty>
-            </doctor>
-            <patient>
-              <patientId>${appointment.patient.patientId}</patientId>
-              <firstName>${appointment.patient.firstName}</firstName>
-              <lastName>${appointment.patient.lastName}</lastName>
-              <email>${appointment.patient.email}</email>
-              <phone>${appointment.patient.phone}</phone>
-              <dateOfBirth>${appointment.patient.dateOfBirth}</dateOfBirth>
-            </patient>
-          </appointmentDetails>
-        </app:updateAppointment>
-      </soapenv:Body>
-    </soapenv:Envelope>
-  `;
-
-    const response = await fetch('https://ubiquitous-barnacle-4jjjr69754wp25qxv-8080.app.github.dev/soap/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/xml' },
-        body: soapEnvelope
-    });
-
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Error al actualizar cita: ${err}`);
-    }
-}
-export async function deleteAppointment(appointmentId: number | string): Promise<void> {
-    const soapEnvelope = `
-      <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                        xmlns:app="http://soap.p1backend.example.com/">
-        <soapenv:Header/>
-        <soapenv:Body>
-          <app:deleteAppointment>
-            <appointmentId>${appointmentId}</appointmentId>
-          </app:deleteAppointment>
-        </soapenv:Body>
-      </soapenv:Envelope>
+  // Obtener detalles de una cita específica por ID
+  getAppointmentById: async (appointmentId: string | number): Promise<Appointment | null> => {
+    const soapBody = `
+      <soap:getAppointmentDetails>
+        <appointmentId>${appointmentId}</appointmentId>
+      </soap:getAppointmentDetails>
     `;
-
-    const response = await fetch('https://ubiquitous-barnacle-4jjjr69754wp25qxv-8080.app.github.dev/soap/appointments', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'text/xml',
+    
+    try {
+      const { xmlDoc, success } = await appointmentSoapService.callService(
+        'getAppointmentDetails', 
+        soapBody
+      );
+      
+      if (!success) return null;
+      
+      const appointmentEl = xmlDoc.querySelector('appointment');
+      if (!appointmentEl) return null;
+      
+      const get = (tag: string, parent: Element = appointmentEl) =>
+        parent.querySelector(tag)?.textContent?.trim() ?? '';
+        
+      const doctorEl = appointmentEl.querySelector('doctor');
+      const patientEl = appointmentEl.querySelector('patient');
+      
+      if (!doctorEl || !patientEl) return null;
+      
+      return {
+        appointmentId: Number(get('appointmentId')),
+        appointmentDate: get('appointmentDate'),
+        startTime: get('startTime'),
+        endTime: get('endTime'),
+        status: get('status'),
+        notes: get('notes'),
+        doctor: {
+          doctorId: get('doctorId', doctorEl),
+          firstName: get('firstName', doctorEl),
+          lastName: get('lastName', doctorEl),
+          specialty: get('specialty', doctorEl),
+          email: get('email', doctorEl),
+          phone: get('phone', doctorEl)
         },
-        body: soapEnvelope
-    });
-
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Error al eliminar cita: ${text}`);
+        patient: {
+          patientId: get('patientId', patientEl),
+          firstName: get('firstName', patientEl),
+          lastName: get('lastName', patientEl),
+          dateOfBirth: get('dateOfBirth', patientEl),
+          email: get('email', patientEl),
+          phone: get('phone', patientEl)
+        }
+      };
+    } catch (error) {
+      console.error('Error al obtener detalles de la cita:', error);
+      return null;
     }
-}
+  },
+
+  // Crear una nueva cita
+  createAppointment: async (appointment: Omit<Appointment, 'appointmentId'>): Promise<boolean> => {
+    // Aseguramos que las fechas tengan el formato YYYY-MM-DD y las horas HH:MM
+    const appointmentDate = appointment.appointmentDate; // Ya debe venir en formato YYYY-MM-DD
+    const startTime = appointment.startTime; // Ya debe venir en formato HH:MM
+    const endTime = appointment.endTime; // Ya debe venir en formato HH:MM
+    
+    const soapBody = `
+      <soap:createAppointment>
+        <appointment>
+          <doctor>
+            <doctorId>${appointment.doctor.doctorId}</doctorId>
+          </doctor>
+          <patient>
+            <patientId>${appointment.patient.patientId}</patientId>
+          </patient>
+          <appointmentDate>${appointmentDate}</appointmentDate>
+          <startTime>${startTime}</startTime>
+          <endTime>${endTime}</endTime>
+          <status>${appointment.status}</status>
+          <notes>${appointment.notes || ''}</notes>
+        </appointment>
+      </soap:createAppointment>
+    `;
+    
+    try {
+      const { success } = await appointmentSoapService.callService(
+        'createAppointment',
+        soapBody
+      );
+      return success;
+    } catch (error) {
+      console.error('Error al crear cita:', error);
+      return false;
+    }
+  },
+
+  // Actualizar una cita existente
+  updateAppointment: async (appointment: Appointment): Promise<boolean> => {
+    // Aseguramos que las fechas tengan el formato YYYY-MM-DD y las horas HH:MM
+    const appointmentDate = appointment.appointmentDate; // Ya debe venir en formato YYYY-MM-DD
+    const startTime = appointment.startTime; // Ya debe venir en formato HH:MM
+    const endTime = appointment.endTime; // Ya debe venir en formato HH:MM
+    
+    const soapBody = `
+      <soap:updateAppointment>
+        <appointment>
+          <appointmentId>${appointment.appointmentId}</appointmentId>
+          <doctor>
+            <doctorId>${appointment.doctor.doctorId}</doctorId>
+          </doctor>
+          <patient>
+            <patientId>${appointment.patient.patientId}</patientId>
+          </patient>
+          <appointmentDate>${appointmentDate}</appointmentDate>
+          <startTime>${startTime}</startTime>
+          <endTime>${endTime}</endTime>
+          <status>${appointment.status}</status>
+          <notes>${appointment.notes || ''}</notes>
+        </appointment>
+      </soap:updateAppointment>
+    `;
+    
+    try {
+      const { success } = await appointmentSoapService.callService(
+        'updateAppointment',
+        soapBody
+      );
+      return success;
+    } catch (error) {
+      console.error('Error al actualizar cita:', error);
+      return false;
+    }
+  },
+
+  // Eliminar una cita por ID
+  deleteAppointment: async (appointmentId: string | number): Promise<boolean> => {
+    const soapBody = `
+      <soap:deleteAppointment>
+        <appointmentId>${appointmentId}</appointmentId>
+      </soap:deleteAppointment>
+    `;
+    const { success } = await appointmentSoapService.callService(
+      'deleteAppointment',
+      soapBody
+    );
+    return success;
+  },
+  
+  // Obtener citas de un doctor específico
+  getAppointmentsByDoctorId: async (doctorId: string): Promise<Appointment[]> => {
+    const soapBody = `
+      <soap:getAppointmentsByDoctorId>
+        <doctorId>${doctorId}</doctorId>
+      </soap:getAppointmentsByDoctorId>
+    `;
+    
+    try {
+      const { xmlDoc, success } = await appointmentSoapService.callService(
+        'getAppointmentsByDoctorId',
+        soapBody
+      );
+      
+      if (!success) return [];
+      
+      const nodes = Array.from(xmlDoc.getElementsByTagName('appointments'));
+      return nodes.map((el) => {
+        const get = (tag: string, parent: Element = el) =>
+          parent.getElementsByTagName(tag)[0]?.textContent?.trim() ?? '';
+  
+        const doctorEl = el.getElementsByTagName('doctor')[0];
+        const patientEl = el.getElementsByTagName('patient')[0];
+  
+        return {
+          appointmentId: Number(get('appointmentId')),
+          appointmentDate: get('appointmentDate'),
+          startTime: get('startTime'),
+          endTime: get('endTime'),
+          status: get('status'),
+          notes: get('notes'),
+          doctor: {
+            doctorId: get('doctorId', doctorEl),
+            firstName: get('firstName', doctorEl),
+            lastName: get('lastName', doctorEl),
+            specialty: get('specialty', doctorEl),
+            email: get('email', doctorEl),
+            phone: get('phone', doctorEl)
+          },
+          patient: {
+            patientId: get('patientId', patientEl),
+            firstName: get('firstName', patientEl),
+            lastName: get('lastName', patientEl),
+            dateOfBirth: get('dateOfBirth', patientEl),
+            email: get('email', patientEl),
+            phone: get('phone', patientEl)
+          }
+        };
+      });
+    } catch (error) {
+      console.error('Error al obtener citas del doctor:', error);
+      return [];
+    }
+  },
+  
+  // Obtener citas de un paciente específico
+  getAppointmentsByPatientId: async (patientId: string): Promise<Appointment[]> => {
+    const soapBody = `
+      <soap:getAppointmentsByPatientId>
+        <patientId>${patientId}</patientId>
+      </soap:getAppointmentsByPatientId>
+    `;
+    
+    try {
+      const { xmlDoc, success } = await appointmentSoapService.callService(
+        'getAppointmentsByPatientId',
+        soapBody
+      );
+
+      console.log(success); // Log the SOAP response for debugging
+      
+      if (!success) return [];
+      
+      const nodes = Array.from(xmlDoc.getElementsByTagName('appointments'));
+      return nodes.map((el) => {
+        const get = (tag: string, parent: Element = el) =>
+          parent.getElementsByTagName(tag)[0]?.textContent?.trim() ?? '';
+  
+        const doctorEl = el.getElementsByTagName('doctor')[0];
+        const patientEl = el.getElementsByTagName('patient')[0];
+  
+        return {
+          appointmentId: Number(get('appointmentId')),
+          appointmentDate: get('appointmentDate'),
+          startTime: get('startTime'),
+          endTime: get('endTime'),
+          status: get('status'),
+          notes: get('notes'),
+          doctor: {
+            doctorId: get('doctorId', doctorEl),
+            firstName: get('firstName', doctorEl),
+            lastName: get('lastName', doctorEl),
+            specialty: get('specialty', doctorEl),
+            email: get('email', doctorEl),
+            phone: get('phone', doctorEl)
+          },
+          patient: {
+            patientId: get('patientId', patientEl),
+            firstName: get('firstName', patientEl),
+            lastName: get('lastName', patientEl),
+            dateOfBirth: get('dateOfBirth', patientEl),
+            email: get('email', patientEl),
+            phone: get('phone', patientEl)
+          }
+        };
+      });
+    } catch (error) {
+      console.error('Error al obtener citas del paciente:', error);
+      return [];
+    }
+  }
+};
