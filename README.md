@@ -111,25 +111,36 @@ npm run build
 
 ## Docker Deployment
 
-The repository includes Docker configuration for containerized deployment:
+The repository includes Docker configuration for development in a containerized environment:
 
 ```bash
-# Build the Docker image
-docker build -t p1-frontend .
+# Build the Docker image with required environment variables
+docker build \
+  --build-arg VITE_DOCKER_ENV=true \
+  --build-arg VITE_API_URL=http://backend:8080 \
+  -t p1-frontend .
 
-# Run the container (standalone)
-docker run -p 3000:3000 p1-frontend
+# Run the container with development server
+docker run -p 5173:5173 p1-frontend
+```
+
+You can also specify different environment variables during build time:
+
+```bash
+docker build \
+  --build-arg VITE_DOCKER_ENV=true \
+  --build-arg VITE_API_URL=http://your-custom-backend:8080 \
+  -t p1-frontend .
 ```
 
 ## Environment Variables
 
-The Docker container accepts the following environment variables:
+The application accepts the following environment variables:
 
 | Variable | Description | Default Value |
 |----------|-------------|---------------|
-| BACKEND_URL | Backend SOAP service base URL | http://backend:8080 |
-| API_TIMEOUT | API request timeout (ms) | 30000 |
-| PUBLIC_BASE_URL | Public-facing URL of the app | http://localhost:3000 |
+| VITE_DOCKER_ENV | Flag to indicate Docker environment | false |
+| VITE_API_URL | Backend SOAP service base URL | http://backend:8080 |
 
 ## Integration with P1-Infrastructure
 
